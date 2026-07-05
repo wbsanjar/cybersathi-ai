@@ -1,0 +1,6 @@
+{
+  "name": "CyberSathi AI",
+  "description": "An AI-powered cybersecurity platform for cyber fraud prevention and response. Protects against UPI scams, phishing, fake calls, malicious links, QR frauds, and financial cyber attacks using Gemini-powered AI analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
