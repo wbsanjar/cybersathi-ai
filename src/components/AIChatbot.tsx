@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Message } from "../types";
-import { Send, Bot, User, Trash2, ArrowRightLeft, Sparkles, MessageSquare, Mic, HelpCircle } from "lucide-react";
+import { Send, Bot, User, Trash2, ArrowRightLeft, Sparkles, MessageSquare, Mic, HelpCircle, Volume2, VolumeX } from "lucide-react";
 
 interface AIChatbotProps {
   embedded?: boolean;
@@ -17,7 +17,53 @@ export default function AIChatbot({ embedded = false }: AIChatbotProps) {
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Voice recognition setup
+  const startVoiceInput = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in your browser. Try Chrome or Edge.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      setIsListening(false);
+      setTimeout(() => handleSend(transcript), 300);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening]);
+
+  // Text-to-speech for assistant responses
+  const speakText = useCallback((text: string) => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text.replace(/\*\*/g, "").replace(/#/g, ""));
+      utterance.lang = "en-IN";
+      utterance.rate = 0.9;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
 
   // Suggested pre-set quick prompts
   const suggestions = [
@@ -168,6 +214,16 @@ export default function AIChatbot({ embedded = false }: AIChatbotProps) {
                     return part;
                   })}
                 </div>
+                {!isUser && (
+                  <button
+                    onClick={() => speakText(m.content)}
+                    className="mt-1.5 text-[9px] text-slate-500 hover:text-cyan-400 flex items-center gap-1 transition"
+                    title="Read aloud"
+                  >
+                    {isSpeaking ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    <span>{isSpeaking ? "Stop" : "Listen"}</span>
+                  </button>
+                )}
               </div>
 
               {/* User avatar right */}
@@ -225,13 +281,17 @@ export default function AIChatbot({ embedded = false }: AIChatbotProps) {
           className="flex-1 glass-input rounded-xl py-2 px-3.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-sans"
         />
         
-        {/* Trigger voice dummy */}
+        {/* Voice input button */}
         <button 
-          onClick={() => handleSend("Analyze this scam call prompt for me")}
-          className="p-2 rounded-xl bg-white/2 border border-white/5 hover:border-cyan-400/50 hover:text-cyan-400 text-slate-400 transition"
-          title="Voice Command"
+          onClick={startVoiceInput}
+          className={`p-2 rounded-xl border transition ${
+            isListening 
+              ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse" 
+              : "bg-white/2 border-white/5 hover:border-cyan-400/50 hover:text-cyan-400 text-slate-400"
+          }`}
+          title={isListening ? "Listening..." : "Voice Input"}
         >
-          <Mic className="w-4 h-4" />
+          <Mic className={`w-4 h-4 ${isListening ? "animate-bounce" : ""}`} />
         </button>
 
         <button

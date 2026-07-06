@@ -1,7 +1,13 @@
 import React, { useState } from "react";
-import { AlertCircle, ShieldAlert, PhoneCall, Copy, CheckCircle, Download, FileText, Landmark, UserMinus, HelpCircle } from "lucide-react";
+import { AlertCircle, ShieldAlert, PhoneCall, Copy, CheckCircle, Download, FileText, Landmark, UserMinus, HelpCircle, Smartphone, FileSearch, Camera, ListChecks, ExternalLink } from "lucide-react";
 
-export default function EmergencyResponse() {
+interface EmergencyResponseProps {
+  t: (key: string) => string;
+  lang: string;
+}
+
+export default function EmergencyResponse({ t, lang }: EmergencyResponseProps) {
+  const [activeTab, setActiveTab] = useState<"hotlines" | "bank-freeze" | "fir" | "evidence" | "sim-block">("hotlines");
   const [activeStep, setActiveStep] = useState<"trigger" | "wizard" | "result">("trigger");
   
   // Complaint state
@@ -15,6 +21,22 @@ export default function EmergencyResponse() {
   const [generatedLetter, setGeneratedLetter] = useState("");
   const [isCopied, setIsCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // FIR state
+  const [firAddress, setFirAddress] = useState("");
+  const [firSuspects, setFirSuspects] = useState("");
+  const [firEvidence, setFirEvidence] = useState("");
+  const [firPoliceStation, setFirPoliceStation] = useState("");
+  const [generatedFIR, setGeneratedFIR] = useState("");
+  const [firCopied, setFirCopied] = useState(false);
+
+  // Evidence guide state
+  const [evidenceGuide, setEvidenceGuide] = useState<any>(null);
+  const [isLoadingEvidence, setIsLoadingEvidence] = useState(false);
+
+  // Sim block state
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [simBlocked, setSimBlocked] = useState(false);
 
   // Quick Helpline Hotlines
   const helplines = [
@@ -82,6 +104,50 @@ export default function EmergencyResponse() {
   return (
     <div className="space-y-8" id="emergency-workflow-container">
       
+      {/* Quick Action Tabs */}
+      <div className="flex flex-wrap gap-2 bg-white/2 p-1.5 rounded-xl border border-white/5 backdrop-blur-md">
+        <button
+          onClick={() => setActiveTab("hotlines")}
+          className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+            activeTab === "hotlines" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <PhoneCall className="w-3.5 h-3.5" /> {t("sosHotlines")}
+        </button>
+        <button
+          onClick={() => setActiveTab("bank-freeze")}
+          className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+            activeTab === "bank-freeze" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <Landmark className="w-3.5 h-3.5" /> {t("sosBankFreeze")}
+        </button>
+        <button
+          onClick={() => setActiveTab("fir")}
+          className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+            activeTab === "fir" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" /> {t("sosFileFIR")}
+        </button>
+        <button
+          onClick={() => setActiveTab("evidence")}
+          className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+            activeTab === "evidence" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <Camera className="w-3.5 h-3.5" /> {t("sosEvidence")}
+        </button>
+        <button
+          onClick={() => setActiveTab("sim-block")}
+          className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+            activeTab === "sim-block" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-400 hover:text-white"
+          }`}
+        >
+          <Smartphone className="w-3.5 h-3.5" /> {t("sosBlockSIM")}
+        </button>
+      </div>
+
       {/* Banner / Headline */}
       <div className="glass-card border-red-500/30 rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -91,9 +157,9 @@ export default function EmergencyResponse() {
               <ShieldAlert className="w-8 h-8 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Emergency Response System</h2>
+              <h2 className="text-xl font-bold text-white">{t("sosTitle")}</h2>
               <p className="text-xs text-red-300/80 leading-relaxed max-w-xl">
-                If you have been scammed or witnessed unauthorized debits, act immediately! Under the "Golden Hour" guideline, money transferred through UPI/IMPS can often be frozen before fraudsters withdraw it.
+                {t("sosSubtitle")}
               </p>
             </div>
           </div>
@@ -103,13 +169,13 @@ export default function EmergencyResponse() {
               className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg text-sm transition-all duration-300 shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-bounce font-mono uppercase tracking-wide"
               id="activate-emergency-btn"
             >
-              ⚠️ I am a Victim
+              {t("sosIAVictim")}
             </button>
           )}
         </div>
       </div>
 
-      {activeStep === "trigger" && (
+      {activeTab === "hotlines" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Quick Helpline Numbers list */}
@@ -169,8 +235,8 @@ export default function EmergencyResponse() {
         </div>
       )}
 
-      {/* STEP 2: Wizard Complaint Letter Builder */}
-      {activeStep === "wizard" && (
+      {/* BANK FREEZE: Wizard Complaint Letter Builder */}
+      {activeTab === "bank-freeze" && activeStep === "wizard" && (
         <div className="glass-card rounded-xl p-6">
           <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-3">
             <div>
@@ -269,8 +335,8 @@ export default function EmergencyResponse() {
         </div>
       )}
 
-      {/* STEP 3: Results Letter Preview */}
-      {activeStep === "result" && (
+      {/* BANK FREEZE: Results Letter Preview */}
+      {activeTab === "bank-freeze" && activeStep === "result" && (
         <div className="glass-card rounded-xl p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-3 border-b border-white/5">
             <div>
@@ -329,6 +395,303 @@ export default function EmergencyResponse() {
                 <li>Visit your nearest home bank branch tomorrow morning and submit a signed physical printout of this complaint letter directly to the branch manager.</li>
               </ol>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FIR Generation Section */}
+      {activeTab === "fir" && (
+        <div className="glass-card rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+            <div className="p-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg">FIR Draft Generator</h3>
+              <p className="text-xs text-slate-400">Generate a draft First Information Report to file at your nearest cyber crime police station.</p>
+            </div>
+          </div>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              const res = await fetch("/api/emergency/fir", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  fullName, contactNo, address: firAddress,
+                  fraudType: "Financial Cyber Fraud",
+                  incidentDetails, lossAmount,
+                  suspects: firSuspects, evidenceList: firEvidence,
+                  policeStation: firPoliceStation
+                })
+              });
+              const data = await res.json();
+              if (data.firText) { setGeneratedFIR(data.firText); setFirCopied(false); }
+            } catch (err) { alert("Failed to generate FIR. Check backend connection."); }
+          }} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Your Full Name</label>
+                <input type="text" required placeholder="e.g. Amit Kumar Sharma" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Contact Number</label>
+                <input type="tel" required placeholder="e.g. +91 98765 43210" value={contactNo} onChange={(e) => setContactNo(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Your Address</label>
+                <input type="text" placeholder="e.g. 123, MG Road, Mumbai" value={firAddress} onChange={(e) => setFirAddress(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Police Station</label>
+                <input type="text" placeholder="e.g. Cyber Crime PS, Mumbai" value={firPoliceStation} onChange={(e) => setFirPoliceStation(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Loss Amount (INR)</label>
+                <input type="number" placeholder="e.g. 50000" value={lossAmount} onChange={(e) => setLossAmount(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Suspect Details (if known)</label>
+                <input type="text" placeholder="e.g. Phone number, UPI ID, name" value={firSuspects} onChange={(e) => setFirSuspects(e.target.value)} className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono" />
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Incident Description</label>
+              <textarea required rows={3} placeholder="Describe in detail what happened..." value={incidentDetails} onChange={(e) => setIncidentDetails(e.target.value)} className="w-full glass-input rounded-lg py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono leading-relaxed" />
+            </div>
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Evidence You Have</label>
+              <textarea rows={2} placeholder="Screenshots, transaction IDs, call recordings, messages..." value={firEvidence} onChange={(e) => setFirEvidence(e.target.value)} className="w-full glass-input rounded-lg py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono leading-relaxed" />
+            </div>
+            <button type="submit" className="w-full glass-btn-primary py-3.5 rounded-lg text-sm font-mono uppercase tracking-wide">
+              Generate FIR Draft
+            </button>
+          </form>
+
+          {generatedFIR && (
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-white font-bold text-sm">Generated FIR Draft</h4>
+                <div className="flex gap-2">
+                  <button onClick={() => { navigator.clipboard.writeText(generatedFIR); setFirCopied(true); setTimeout(() => setFirCopied(false), 2000); }} className="bg-white/2 border border-white/5 hover:bg-white/5 text-slate-300 px-3 py-1.5 rounded text-xs flex items-center gap-1.5">
+                    {firCopied ? <><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">Copied!</span></> : <><Copy className="w-3.5 h-3.5" /><span>Copy</span></>}
+                  </button>
+                  <button onClick={() => { const element = document.createElement("a"); const file = new Blob([generatedFIR], { type: "text/plain" }); element.href = URL.createObjectURL(file); element.download = `CyberSathi_FIR_${fullName.replace(/\s+/g, "_")}.txt`; document.body.appendChild(element); element.click(); document.body.removeChild(element); }} className="glass-btn-primary px-3 py-1.5 rounded text-xs flex items-center gap-1.5">
+                    <Download className="w-3.5 h-3.5" /> Download
+                  </button>
+                </div>
+              </div>
+              <div className="bg-black/40 rounded-xl border border-white/5 p-5 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[400px] overflow-y-auto select-all backdrop-blur-md">
+                {generatedFIR}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Evidence Collection Guide */}
+      {activeTab === "evidence" && (
+        <div className="glass-card rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+            <div className="p-2.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg">Evidence Collection Guide</h3>
+              <p className="text-xs text-slate-400">Preserve digital evidence properly to strengthen your case. Follow this step-by-step guide.</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={async () => {
+                  setIsLoadingEvidence(true);
+                  try {
+                    const res = await fetch("/api/emergency/evidence", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ fraudType: "UPI Scam" })
+                    });
+                    const data = await res.json();
+                    if (data.guideTitle) setEvidenceGuide(data);
+                  } catch (err) { alert("Failed to load evidence guide."); }
+                  setIsLoadingEvidence(false);
+                }}
+                className="glass-card-hover bg-white/2 border border-white/5 rounded-xl p-4 text-left hover:border-cyan-500/30 transition"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <ListChecks className="w-5 h-5 text-cyan-400" />
+                  <h4 className="text-white font-bold text-sm">Generate AI Evidence Guide</h4>
+                </div>
+                <p className="text-xs text-slate-400">Get a personalized evidence collection checklist based on your fraud type.</p>
+              </button>
+
+              <div className="glass-card-hover bg-white/2 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <ExternalLink className="w-5 h-5 text-purple-400" />
+                  <h4 className="text-white font-bold text-sm">Quick Evidence Tips</h4>
+                </div>
+                <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+                  <li>Take screenshots of all messages and calls</li>
+                  <li>Record transaction IDs and UTR numbers</li>
+                  <li>Save sender phone numbers and UPI IDs</li>
+                  <li>Don't delete any SMS or chat history</li>
+                  <li>Preserve call recordings if available</li>
+                </ul>
+              </div>
+            </div>
+
+            {isLoadingEvidence && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p className="text-xs text-slate-400 font-mono">Generating evidence collection guide...</p>
+              </div>
+            )}
+
+            {evidenceGuide && (
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 space-y-4">
+                <h4 className="text-cyan-400 font-bold text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {evidenceGuide.guideTitle}
+                </h4>
+                
+                {evidenceGuide.digitalEvidence && (
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-mono uppercase block mb-1">Digital Evidence to Collect</span>
+                    <div className="flex flex-wrap gap-2">
+                      {evidenceGuide.digitalEvidence.map((item: string, i: number) => (
+                        <span key={i} className="text-xs bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2 py-1 rounded">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {evidenceGuide.preservationSteps && (
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-mono uppercase block mb-1">Preservation Steps</span>
+                    <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1">
+                      {evidenceGuide.preservationSteps.map((step: string, i: number) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {evidenceGuide.checklist && (
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-mono uppercase block mb-1">Before Visiting Police Station</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {evidenceGuide.checklist.map((item: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-slate-300 bg-white/2 p-2 rounded border border-white/5">
+                          <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Manual evidence upload area */}
+            <div className="bg-white/2 border border-white/5 rounded-xl p-6 text-center">
+              <Camera className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+              <h4 className="text-white font-bold text-sm mb-1">Upload Evidence (Optional)</h4>
+              <p className="text-xs text-slate-400 mb-4">Upload screenshots, call logs, or documents as evidence for your case.</p>
+              <label className="cursor-pointer glass-btn-primary px-4 py-2 rounded-lg text-xs font-mono inline-block">
+                <input type="file" multiple accept="image/*,.pdf" className="hidden" />
+                Upload Files
+              </label>
+              <p className="text-[10px] text-slate-600 mt-2 font-mono">Max 10 files • JPG, PNG, PDF</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SIM Block Guidance */}
+      {activeTab === "sim-block" && (
+        <div className="glass-card rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+            <div className="p-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg">Block Your SIM Card</h3>
+              <p className="text-xs text-slate-400">If your SIM is compromised, blocked, or you suspect SIM swap fraud, follow these steps.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white/2 border border-white/5 rounded-xl p-4 text-center">
+              <span className="text-2xl font-bold text-cyan-400 block">1</span>
+              <h4 className="text-white font-bold text-xs mt-2">Call Your Operator</h4>
+              <p className="text-[10px] text-slate-400 mt-1">Call customer care to report lost/stolen SIM</p>
+              <span className="text-xs font-bold text-cyan-400 font-mono block mt-2 bg-cyan-500/10 py-1 rounded">Airtel: 121 | Jio: 199 | VI: 199 | BSNL: 9400940094</span>
+            </div>
+            <div className="bg-white/2 border border-white/5 rounded-xl p-4 text-center">
+              <span className="text-2xl font-bold text-cyan-400 block">2</span>
+              <h4 className="text-white font-bold text-xs mt-2">Sanchar Saathi Portal</h4>
+              <p className="text-[10px] text-slate-400 mt-1">Report and block SIM via government portal</p>
+              <a href="https://sancharsaathi.gov.in" target="_blank" rel="noreferrer" className="text-xs text-cyan-400 font-mono block mt-2 hover:underline">Visit Portal →</a>
+            </div>
+            <div className="bg-white/2 border border-white/5 rounded-xl p-4 text-center">
+              <span className="text-2xl font-bold text-cyan-400 block">3</span>
+              <h4 className="text-white font-bold text-xs mt-2">File Police Complaint</h4>
+              <p className="text-[10px] text-slate-400 mt-1">File FIR for SIM swap fraud at nearest police station</p>
+              <span className="text-xs font-bold text-red-400 font-mono block mt-2">Dial 1930 for cyber cell</span>
+            </div>
+          </div>
+
+          <div className="bg-white/2 border border-white/5 rounded-xl p-5">
+            <h4 className="text-white font-bold text-sm mb-3 flex items-center gap-2">
+              <PhoneCall className="w-4 h-4 text-red-400" />
+              <span>Request SIM Block</span>
+            </h4>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="text-[10px] font-mono text-slate-400 uppercase block mb-1">Your Mobile Number</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 98765 43210"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  className="w-full glass-input rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (mobileNumber.length >= 10) {
+                    setSimBlocked(true);
+                  } else {
+                    alert("Please enter a valid mobile number.");
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-5 rounded-lg text-xs font-mono uppercase transition"
+              >
+                Block SIM
+              </button>
+            </div>
+            {simBlocked && (
+              <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-emerald-300">SIM block request submitted for {mobileNumber}. Your operator will contact you for verification. In case of emergency, dial 1930.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 p-4 rounded-lg bg-cyan-950/20 border border-cyan-500/20">
+            <h4 className="text-cyan-300 text-xs font-bold mb-2">🚨 SIM Swap Fraud Warning</h4>
+            <p className="text-[11px] text-cyan-200/80 leading-relaxed">
+              If your mobile network suddenly stops working (no signal), it could mean a SIM swap fraud. 
+              Scammers get a duplicate SIM issued and use it to receive your OTPs and access your bank accounts. 
+              If this happens: <strong className="text-white">Immediately call your operator to block the SIM, then call 1930 and your bank.</strong>
+            </p>
           </div>
         </div>
       )}

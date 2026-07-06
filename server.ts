@@ -3,7 +3,6 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 // Initialize Gemini API client
@@ -24,6 +23,8 @@ async function startServer() {
   // Body parser limit increased to handle base64 images/screenshots safely
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
+
+  console.log("[Server] Running with local data (NeonDB disabled)");
 
   // Helper helper to format prompt responses
   const getAIClient = (): GoogleGenAI => {
@@ -466,7 +467,461 @@ Provide a detailed safety evaluation in JSON format containing:
     }
   });
 
-  // 9. Generate Emergency Response Official Document
+  // 9. APK File Scanner
+  app.post("/api/scan/apk", async (req: Request, res: Response) => {
+    try {
+      const { apkName, apkPermissions, apkSize, apkSource } = req.body;
+      const client = getAIClient();
+
+      const prompt = `Analyze this Android APK file for malware, spyware, or fraud indicators:
+APK Name: "${apkName || "Unknown"}"
+APK Source: "${apkSource || "Unknown (sideloaded)"}"
+APK Size: "${apkSize || "N/A"}"
+Requested Permissions: "${apkPermissions || "None specified"}"
+
+Provide a security analysis in JSON format:
+1. "status": "Safe", "Suspicious", or "Fraud"
+2. "riskScore": integer between 0 and 100
+3. "malwareIndicators": string array of suspicious behaviors/permissions
+4. "permissionAnalysis": analysis of dangerous permissions requested
+5. "threatDetails": detailed explanation of risks
+6. "recommendation": clear action steps`;
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING },
+              riskScore: { type: Type.INTEGER },
+              malwareIndicators: { type: Type.ARRAY, items: { type: Type.STRING } },
+              permissionAnalysis: { type: Type.STRING },
+              threatDetails: { type: Type.STRING },
+              recommendation: { type: Type.STRING }
+            },
+            required: ["status", "riskScore", "malwareIndicators", "permissionAnalysis", "threatDetails", "recommendation"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("APK Scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze APK." });
+    }
+  });
+
+  // 10. Deepfake Image Detection
+  app.post("/api/scan/deepfake", async (req: Request, res: Response) => {
+    try {
+      const { imageBase64 } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ error: "Image is required" });
+      }
+
+      const client = getAIClient();
+      const base64Data = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
+      const mimeType = imageBase64.includes(",") ? imageBase64.split(",")[0].split(":")[1].split(";")[0] : "image/png";
+
+      const prompt = `You are a deepfake detection expert. Analyze this image for signs of AI-generated or manipulated content:
+- Look for unnatural facial features, inconsistent lighting, weird eye reflections, missing details
+- Check for digital artifacts, compression inconsistencies, blending artifacts
+- Evaluate if this appears to be a real photograph, AI-generated (GAN/Diffusion), or a deepfake manipulation
+
+Return JSON with:
+1. "status": "Authentic", "Suspicious", or "Deepfake"
+2. "confidenceScore": integer 0-100
+3. "detectedAnomalies": string array of suspicious findings
+4. "forensicAnalysis": detailed explanation
+5. "verdict": conclusive statement
+6. "recommendation": what to do about this image`;
+
+      const imagePart = {
+        inlineData: { mimeType, data: base64Data },
+      };
+      const textPart = { text: prompt };
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: { parts: [imagePart, textPart] },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING },
+              confidenceScore: { type: Type.INTEGER },
+              detectedAnomalies: { type: Type.ARRAY, items: { type: Type.STRING } },
+              forensicAnalysis: { type: Type.STRING },
+              verdict: { type: Type.STRING },
+              recommendation: { type: Type.STRING }
+            },
+            required: ["status", "confidenceScore", "detectedAnomalies", "forensicAnalysis", "verdict", "recommendation"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("Deepfake Scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze image." });
+    }
+  });
+
+  // 11. Document Verification
+  app.post("/api/scan/document", async (req: Request, res: Response) => {
+    try {
+      const { documentBase64, documentType } = req.body;
+      if (!documentBase64) {
+        return res.status(400).json({ error: "Document image is required" });
+      }
+
+      const client = getAIClient();
+      const base64Data = documentBase64.includes(",") ? documentBase64.split(",")[1] : documentBase64;
+      const mimeType = documentBase64.includes(",") ? documentBase64.split(",")[0].split(":")[1].split(";")[0] : "image/png";
+
+      const prompt = `You are a document forensic verification expert. Analyze this ${documentType || "document"} image for:
+- Signs of forgery, tampering, or digital alteration
+- Font inconsistencies, spacing anomalies, logo mismatches
+- Missing security features (watermarks, holograms, microprinting)
+- Whether it appears authentic or forged
+
+Return JSON:
+1. "status": "Authentic", "Suspicious", or "Forged"
+2. "riskScore": integer 0-100
+3. "detectedAnomalies": string array of findings
+4. "forensicAnalysis": detailed explanation
+5. "authenticityMarkers": string array of positive signs found
+6. "recommendation": what to do`;
+
+      const imagePart = {
+        inlineData: { mimeType, data: base64Data },
+      };
+      const textPart = { text: prompt };
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: { parts: [imagePart, textPart] },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING },
+              riskScore: { type: Type.INTEGER },
+              detectedAnomalies: { type: Type.ARRAY, items: { type: Type.STRING } },
+              forensicAnalysis: { type: Type.STRING },
+              authenticityMarkers: { type: Type.ARRAY, items: { type: Type.STRING } },
+              recommendation: { type: Type.STRING }
+            },
+            required: ["status", "riskScore", "detectedAnomalies", "forensicAnalysis", "authenticityMarkers", "recommendation"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("Document Scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze document." });
+    }
+  });
+
+  // 12. Social Media Profile Analysis
+  app.post("/api/scan/social", async (req: Request, res: Response) => {
+    try {
+      const { profileUrl, profileName, profileDescription, platform, followersCount } = req.body;
+      const client = getAIClient();
+
+      const prompt = `Analyze this social media profile for impersonation, fake account indicators, or scam risks:
+Platform: "${platform || "Unknown"}"
+Profile URL: "${profileUrl || "N/A"}"
+Profile Name: "${profileName || "N/A"}"
+Description: "${profileDescription || "N/A"}"
+Follower Count: "${followersCount || "N/A"}"
+
+Return JSON:
+1. "status": "Legitimate", "Suspicious", or "Fake/Impersonation"
+2. "riskScore": integer 0-100
+3. "impersonationIndicators": string array (e.g., "Mimicking official brand handle", "Suspicious follower count", "Phishing URL in bio")
+4. "verificationStatus": analysis of whether account appears verified/legitimate
+5. "threatDetails": explanation of risks
+6. "recommendation": what actions to take`;
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING },
+              riskScore: { type: Type.INTEGER },
+              impersonationIndicators: { type: Type.ARRAY, items: { type: Type.STRING } },
+              verificationStatus: { type: Type.STRING },
+              threatDetails: { type: Type.STRING },
+              recommendation: { type: Type.STRING }
+            },
+            required: ["status", "riskScore", "impersonationIndicators", "verificationStatus", "threatDetails", "recommendation"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("Social Scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze profile." });
+    }
+  });
+
+  // 13. Generate Fraud Report
+  app.post("/api/scan/fraud-report", async (req: Request, res: Response) => {
+    try {
+      const { fullName, contactNo, email, fraudType, description, amount, dateTime, evidenceProvided } = req.body;
+      const client = getAIClient();
+
+      const prompt = `Generate a comprehensive cyber fraud report based on the following details:
+
+Victim Name: ${fullName || "N/A"}
+Contact: ${contactNo || "N/A"}
+Email: ${email || "N/A"}
+Fraud Type: ${fraudType || "Cyber Fraud"}
+Description: ${description || "N/A"}
+Amount Lost: Rs. ${amount || "0"}
+Date/Time: ${dateTime || new Date().toLocaleString()}
+Evidence Available: ${evidenceProvided || "None"}
+
+Generate a JSON report containing:
+1. "reportId": auto-generated unique ID
+2. "incidentSummary": 2-3 sentence summary
+3. "fraudClassification": the specific type of cyber fraud
+4. "actionPlan": array of immediate steps the victim should take
+5. "legalProvisions": applicable Indian cyber laws (e.g., IT Act 2000 sections)
+6. "evidenceChecklist": what evidence to collect and preserve
+7. "reportingChannels": where to file the complaint (cybercrime.gov.in, 1930, bank)
+8. "preventionTips": how to avoid similar frauds in future`;
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              reportId: { type: Type.STRING },
+              incidentSummary: { type: Type.STRING },
+              fraudClassification: { type: Type.STRING },
+              actionPlan: { type: Type.ARRAY, items: { type: Type.STRING } },
+              legalProvisions: { type: Type.ARRAY, items: { type: Type.STRING } },
+              evidenceChecklist: { type: Type.ARRAY, items: { type: Type.STRING } },
+              reportingChannels: { type: Type.ARRAY, items: { type: Type.STRING } },
+              preventionTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["reportId", "incidentSummary", "fraudClassification", "actionPlan", "legalProvisions", "evidenceChecklist", "reportingChannels", "preventionTips"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("Fraud Report error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate report." });
+    }
+  });
+
+  // 14. Generate FIR Draft
+  app.post("/api/emergency/fir", async (req: Request, res: Response) => {
+    try {
+      const { fullName, contactNo, address, fraudType, incidentDetails, lossAmount, suspects, evidenceList, policeStation } = req.body;
+
+      const firDraft = `
+FIRST INFORMATION REPORT (FIR) - DRAFT
+Generated by CyberSathi AI Platform
+
+TO,
+The Station House Officer (SHO),
+${policeStation || "Local Cyber Crime Police Station"},
+India.
+
+Date: ${new Date().toDateString()}
+Time: ${new Date().toLocaleTimeString()}
+
+INFORMATION REPORTED UNDER SECTION 154 CrPC / IT ACT 2000
+
+1. Name of Complainant: ${fullName || "N/A"}
+2. Father's/Husband's Name: [Father's/Husband's Name]
+3. Address: ${address || "N/A"}
+4. Contact Number: ${contactNo || "N/A"}
+
+TYPE OF FRAUD: ${fraudType || "Financial Cyber Fraud"}
+
+DETAILED DESCRIPTION OF INCIDENT:
+${incidentDetails || "The complainant reports that they fell victim to a cyber fraud operation..."}
+
+FINANCIAL LOSS: INR ${lossAmount || "0"}
+
+SUSPECT DETAILS (IF KNOWN):
+${suspects || "Unknown. Suspects operated through online channels."}
+
+EVIDENCE COLLECTED:
+${evidenceList || "Screenshots, transaction IDs, call recordings (to be attached)"}
+
+LEGAL PROVISIONS INVOKED:
+- Section 66D, IT Act 2000 (Cheating by impersonation using computer)
+- Section 420 IPC (Cheating and dishonestly inducing delivery of property)
+- Section 379 IPC (Theft) [if applicable]
+
+COMPLAINT STATEMENT:
+I, ${fullName || "the complainant"}, hereby state that the above information is true and correct to the best of my knowledge. I request immediate investigation and action to recover the lost funds and bring the perpetrators to justice.
+
+Signature: ____________________
+
+____________________
+${fullName || "Complainant Name"}
+
+---
+Note: This is an AI-generated draft. Please verify all details and sign in person at your nearest cyber crime police station.
+      `;
+
+      res.json({ firText: firDraft.trim() });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to generate FIR draft." });
+    }
+  });
+
+  // 15. Evidence Collection Guidance
+  app.post("/api/emergency/evidence", async (req: Request, res: Response) => {
+    try {
+      const { fraudType } = req.body;
+
+      const client = getAIClient();
+      const prompt = `Generate a comprehensive evidence collection guide for a cyber fraud victim. The fraud type is: "${fraudType || "General Cyber Fraud"}"
+
+Return JSON with:
+1. "guideTitle": string
+2. "digitalEvidence": array of what digital evidence to collect (screenshots, transaction IDs, call logs, etc.)
+3. "preservationSteps": array of steps to preserve evidence without tampering
+4. "documentationGuide": how to document everything properly
+5. "legalAdmissibility": how to ensure evidence is admissible in court
+6. "checklist": array of items to collect before visiting police station`;
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              guideTitle: { type: Type.STRING },
+              digitalEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+              preservationSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+              documentationGuide: { type: Type.STRING },
+              legalAdmissibility: { type: Type.STRING },
+              checklist: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["guideTitle", "digitalEvidence", "preservationSteps", "documentationGuide", "legalAdmissibility", "checklist"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      console.error("Evidence Guide error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate evidence guide." });
+    }
+  });
+
+  // 16. Admin Analytics
+  app.get("/api/admin/analytics", (req: Request, res: Response) => {
+    res.json({
+      totalUsers: 45892,
+      totalScans: 128450,
+      totalReports: 8245,
+      fraudsPrevented: 48210,
+      amountSaved: 48500000,
+      activeSessions: 1284,
+      threatLevel: "medium",
+      dailyActiveUsers: 5892,
+      monthlyGrowth: 23.5,
+      recentReports: [
+        { id: "FR-2026-001", type: "UPI Scam", status: "Investigating", date: "July 04, 2026", amount: 45000 },
+        { id: "FR-2026-002", type: "Phishing", status: "Resolved", date: "July 03, 2026", amount: 12000 },
+        { id: "FR-2026-003", type: "Investment Scam", status: "Pending", date: "July 02, 2026", amount: 250000 },
+        { id: "FR-2026-004", type: "Fake Call", status: "Resolved", date: "July 01, 2026", amount: 5000 },
+      ],
+      topScams: [
+        { name: "UPI QR Scams", count: 4520 },
+        { name: "Phishing URLs", count: 3890 },
+        { name: "SMS Fraud", count: 2150 },
+        { name: "Investment Scams", count: 1840 },
+        { name: "Fake Calls", count: 1200 }
+      ],
+      userGrowth: [
+        { month: "Jan", users: 12000 },
+        { month: "Feb", users: 15500 },
+        { month: "Mar", users: 19800 },
+        { month: "Apr", users: 25600 },
+        { month: "May", users: 34200 },
+        { month: "Jun", users: 45892 }
+      ]
+    });
+  });
+
+  // 17. Smart Notification Generator
+  app.post("/api/notify", async (req: Request, res: Response) => {
+    try {
+      const { type, context } = req.body;
+      const client = getAIClient();
+
+      const prompt = `Generate a security notification for a cyber safety platform.
+Notification Type: "${type || "general"}"
+Context: "${context || "User scanned a suspicious URL"}"
+
+Return JSON:
+1. "title": short alert title
+2. "message": detailed message (1-2 sentences)
+3. "severity": "low", "medium", "high", or "critical"
+4. "actionRequired": what the user should do
+5. "icon": relevant emoji`;
+
+      const response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              message: { type: Type.STRING },
+              severity: { type: Type.STRING },
+              actionRequired: { type: Type.STRING },
+              icon: { type: Type.STRING }
+            },
+            required: ["title", "message", "severity", "actionRequired", "icon"]
+          }
+        }
+      });
+
+      const parsedData = JSON.parse(response.text || "{}");
+      res.json(parsedData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to generate notification." });
+    }
+  });
+
+  // 9 (original). Generate Emergency Response Official Document
   app.post("/api/emergency/document", (req: Request, res: Response) => {
     try {
       const { fullName, contactNo, scamType, incidentDetails, lossAmount, bankName, transactionId } = req.body;
@@ -514,6 +969,8 @@ Date: ${new Date().toDateString()}
       res.status(500).json({ error: "Failed to generate emergency complaint letter." });
     }
   });
+
+  // ─── DATABASE API ROUTES (disabled - using local data) ─────────
 
   // --- VITE DEV MIDDLEWARE / STATIC SERVING ---
   if (process.env.NODE_ENV !== "production") {

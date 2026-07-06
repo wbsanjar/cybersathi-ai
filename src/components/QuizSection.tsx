@@ -4,9 +4,10 @@ import { Shield, Award, HelpCircle, ArrowRight, RotateCcw, AlertCircle, CheckCir
 
 interface QuizSectionProps {
   onQuizCompleted: (score: number) => void;
+  t: (key: string) => string;
 }
 
-export default function QuizSection({ onQuizCompleted }: QuizSectionProps) {
+export default function QuizSection({ onQuizCompleted, t }: QuizSectionProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
