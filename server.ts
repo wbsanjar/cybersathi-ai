@@ -67,7 +67,7 @@ Format your answers in Markdown. Keep responses clear, professional, and scannab
       }
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: formattedContents,
         config: {
           systemInstruction,
@@ -103,7 +103,7 @@ Provide a detailed safety evaluation in JSON format containing:
 6. "recommendation": Actionable steps (e.g., "Do not enter login credentials", "Safe to browse")`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -157,7 +157,7 @@ Analyze and identify any specific malicious sentences, fake contact numbers, or 
 6. "actionSteps": string array of urgent actions the user should take (e.g., "Do not click the link", "Do not share OTP", "Report SMS to 1909 or via Sanchar Saathi portal")`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -227,7 +227,7 @@ Provide a detailed safety evaluation in JSON format:
 6. "actionSteps": string array of steps (e.g., "Mark as Phishing", "Do not download attachments", "Verify via secondary channel")`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -312,7 +312,7 @@ Provide a detailed safety evaluation in JSON format containing:
       }
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: contents,
         config: {
           responseMimeType: "application/json",
@@ -382,7 +382,7 @@ Evaluate the image and return a JSON safety report containing:
       const textPart = { text: prompt };
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: { parts: [imagePart, textPart] },
         config: {
           responseMimeType: "application/json",
@@ -434,7 +434,7 @@ Provide a detailed safety evaluation in JSON format containing:
 6. "actionSteps": string array of steps (e.g., "Disconnect the call immediately", "Never share OTP or CVV over voice call", "Verify by calling the official bank toll-free number")`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -488,7 +488,7 @@ Provide a security analysis in JSON format:
 6. "recommendation": clear action steps`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -546,7 +546,7 @@ Return JSON with:
       const textPart = { text: prompt };
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: { parts: [imagePart, textPart] },
         config: {
           responseMimeType: "application/json",
@@ -605,7 +605,7 @@ Return JSON:
       const textPart = { text: prompt };
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: { parts: [imagePart, textPart] },
         config: {
           responseMimeType: "application/json",
@@ -654,7 +654,7 @@ Return JSON:
 6. "recommendation": what actions to take`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -709,7 +709,7 @@ Generate a JSON report containing:
 8. "preventionTips": how to avoid similar frauds in future`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -815,7 +815,7 @@ Return JSON with:
 6. "checklist": array of items to collect before visiting police station`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -896,7 +896,7 @@ Return JSON:
 5. "icon": relevant emoji`;
 
       const response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

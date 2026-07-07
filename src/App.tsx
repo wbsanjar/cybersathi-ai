@@ -345,6 +345,9 @@ export default function App() {
                       <button onClick={() => { setAuthMode("signup"); setShowAuthModal(true); }} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold py-3.5 px-6 rounded-lg text-sm transition shadow-[0_0_20px_rgba(0,229,255,0.3)] font-mono uppercase tracking-wide cursor-pointer">
                         🚀 {t("getStarted")}
                       </button>
+                      <button onClick={() => setChatOpen(true)} className="bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-purple-400 font-bold py-3.5 px-6 rounded-lg text-sm transition font-mono uppercase tracking-wide cursor-pointer">
+                        🤖 AI Chat
+                      </button>
                       <button onClick={() => setActiveTab("emergency")} className="bg-red-600/10 hover:bg-red-600/20 border border-red-500/30 text-red-400 font-bold py-3.5 px-6 rounded-lg text-sm transition font-mono uppercase tracking-wide">⚠️ {t("reportFraud")}</button>
                     </div>
                   </div>
